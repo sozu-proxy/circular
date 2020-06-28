@@ -48,8 +48,7 @@
 //! }
 //!
 use std::{cmp, ptr};
-use std::io::{self,Write,Read};
-use std::iter::repeat;
+use std::io::{self, Write, Read};
 
 /// the Buffer contains the underlying memory and data positions
 ///
@@ -70,13 +69,11 @@ pub struct Buffer {
 impl Buffer {
   /// allocates a new buffer of maximum size `capacity`
   pub fn with_capacity(capacity: usize) -> Buffer {
-    let mut v = Vec::with_capacity(capacity);
-    v.extend(repeat(0).take(capacity));
     Buffer {
-      memory:   v,
-      capacity: capacity,
+      memory: vec![0; capacity],
+      capacity,
       position: 0,
-      end:      0
+      end: 0
     }
   }
 
@@ -259,7 +256,7 @@ impl Buffer {
         ptr::copy(data.as_ptr(), (&mut self.memory[begin..slice_end]).as_mut_ptr(), data_len);
 
         ptr::copy((&self.memory[start+length..self.end]).as_ptr(), (&mut self.memory[slice_end..]).as_mut_ptr(), self.end - (start + length));
-        self.end = self.end - (length - data_len);
+        self.end -= length - data_len;
 
       // we put more data in the buffer
       } else {
@@ -285,7 +282,7 @@ impl Buffer {
       let slice_end = begin + data_len;
       ptr::copy((&self.memory[start..self.end]).as_ptr(), (&mut self.memory[start+data_len..]).as_mut_ptr(), self.end - start);
       ptr::copy(data.as_ptr(), (&mut self.memory[begin..slice_end]).as_mut_ptr(), data_len);
-      self.end = self.end + data_len;
+      self.end += data_len;
     }
     Some(self.available_data())
   }
@@ -394,7 +391,6 @@ mod tests {
     assert_eq!(b.data(), &b"ab123Zgh"[..]);
   }
 
-  use std::str;
   #[test]
   fn set_position() {
     let mut output = [0;5];
