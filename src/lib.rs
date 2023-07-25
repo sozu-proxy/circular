@@ -213,16 +213,10 @@ impl Buffer {
     /// if the position was more than 0, it is now 0
     pub fn shift(&mut self) {
         if self.position > 0 {
-            unsafe {
-                let length = self.end - self.position;
-                ptr::copy(
-                    (&self.memory[self.position..self.end]).as_ptr(),
-                    (&mut self.memory[..length]).as_mut_ptr(),
-                    length,
-                );
-                self.position = 0;
-                self.end = length;
-            }
+            let length = self.end - self.position;
+            self.memory.copy_within(self.position..self.end, 0);
+            self.position = 0;
+            self.end = length;
         }
     }
 
@@ -233,16 +227,10 @@ impl Buffer {
             return None;
         }
 
-        unsafe {
-            let begin = self.position + start;
-            let next_end = self.end - length;
-            ptr::copy(
-                (&self.memory[begin + length..self.end]).as_ptr(),
-                (&mut self.memory[begin..next_end]).as_mut_ptr(),
-                self.end - (begin + length),
-            );
-            self.end = next_end;
-        }
+        let begin = self.position + start;
+        let next_end = self.end - length;
+        self.memory.copy_within(begin + length..self.end, begin);
+        self.end = next_end;
         Some(self.available_data())
     }
 
@@ -338,14 +326,8 @@ impl Write for Buffer {
 impl Read for Buffer {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let len = cmp::min(self.available_data(), buf.len());
-        unsafe {
-            ptr::copy(
-                (&self.memory[self.position..self.position + len]).as_ptr(),
-                buf.as_mut_ptr(),
-                len,
-            );
-            self.position += len;
-        }
+        buf.copy_from_slice(&self.memory[self.position..self.position + len]);
+        self.position += len;
         Ok(len)
     }
 }
@@ -429,7 +411,6 @@ mod tests {
         assert_eq!(b.data(), &b"ab123Zgh"[..]);
     }
 
-    use std::str;
     #[test]
     fn set_position() {
         let mut output = [0; 5];
